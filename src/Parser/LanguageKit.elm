@@ -389,7 +389,7 @@ whitespace { allowTabs, lineComment, multiComment } =
   let
     tabParser =
       if allowTabs then
-        [ Parser.ignore zeroOrMore isTab ]
+        [ Parser.ignore oneOrMore isTab ]
       else
         []
 
