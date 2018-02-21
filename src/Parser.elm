@@ -707,7 +707,11 @@ Please report an SSCCE to <https://github.com/elm-tools/parser/issues>."""
     run float "6.022e"    == Err ..
     run float "6.022n"    == Err ..
     run float "6.022.31"  == Err ..
-    run float "."  == Err ..
+    run float "."         == Err ..
+    run float "e"         == Err ..
+    run float "e1"        == Err ..
+    run float ".e"         == Err ..
+    run float ".e1"        == Err ..
 
 **Note:** If you want a parser for both `Int` and `Float` literals,
 check out [`Parser.LanguageKit.number`](Parser-LanguageKit#number).
@@ -750,19 +754,27 @@ float =
 floatHelp : Int -> String -> Result Int Int
 floatHelp offset source =
   let
-    dotOffset =
-      Internal.chomp Char.isDigit offset source
-
-    result =
-      Internal.chompDotAndExp dotOffset source
+    eOffset = Prim.isSubChar isE offset source
   in
-    case result of
-      Err _ ->
-        result
-
-      Ok n ->
-        -- The second conditions raises the error as well if we parse just a dot ".", which String.toFloat cannot parse.
-        if n == offset || (dotOffset == offset && result == dotOffset + 1) then Err n else result
+  if eOffset >= 0 then -- A float does not start with e or E
+    Err eOffset
+  else
+    let
+      dotOffset =
+        Internal.chomp Char.isDigit offset source
+  
+      result =
+        Internal.chompDotAndExp dotOffset source
+    in
+      case result of
+        Err _ ->
+          result
+  
+        Ok n ->
+          -- The second conditions raises the error as well if we parse just a dot ".", which String.toFloat cannot parse.
+          if n == offset ||
+             (dotOffset == offset && 
+                (result == dotOffset + 1 || Prim.isSubChar isE (dotOffset + 1) source)) then Err n else result
 
 
 badFloatMsg : String
