@@ -774,7 +774,10 @@ floatHelp offset source =
           -- The second conditions raises the error as well if we parse just a dot ".", which String.toFloat cannot parse.
           if n == offset ||
              (dotOffset == offset && 
-                (result == dotOffset + 1 || Prim.isSubChar isE (dotOffset + 1) source)) then Err n else result
+                (n == dotOffset + 1 || Prim.isSubChar isE (dotOffset + 1) source)) ||
+             Prim.isSubChar isE (n - 1) source -- If the last char is an E, it should raise an error.
+          then Err n
+          else result
 
 
 badFloatMsg : String
