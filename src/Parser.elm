@@ -703,9 +703,11 @@ Please report an SSCCE to <https://github.com/elm-tools/parser/issues>."""
     run float "6.022e23"  == Ok 6.022e23
     run float "6.022E23"  == Ok 6.022e23
     run float "6.022e+23" == Ok 6.022e23
+    run float "002.25"    == Ok 2.25
     run float "6.022e"    == Err ..
     run float "6.022n"    == Err ..
     run float "6.022.31"  == Err ..
+    run float "."  == Err ..
 
 **Note:** If you want a parser for both `Int` and `Float` literals,
 check out [`Parser.LanguageKit.number`](Parser-LanguageKit#number).
@@ -718,7 +720,7 @@ check out [`Parser.LanguageKit.float`](Parser-LanguageKit#float).
 float : Parser Float
 float =
   Parser <| \{ source, offset, indent, context, row, col } ->
-    case floatHelp offset (Prim.isSubChar isZero offset source) source of
+    case floatHelp offset source of
       Err badOffset ->
         Bad BadFloat
           { source = source
@@ -745,25 +747,22 @@ float =
               }
 
 
-floatHelp : Int -> Int -> String -> Result Int Int
-floatHelp offset zeroOffset source =
-  if zeroOffset >= 0 then
-    Internal.chompDotAndExp zeroOffset source
+floatHelp : Int -> String -> Result Int Int
+floatHelp offset source =
+  let
+    dotOffset =
+      Internal.chomp Char.isDigit offset source
 
-  else
-    let
-      dotOffset =
-        Internal.chomp Char.isDigit offset source
+    result =
+      Internal.chompDotAndExp dotOffset source
+  in
+    case result of
+      Err _ ->
+        result
 
-      result =
-        Internal.chompDotAndExp dotOffset source
-    in
-      case result of
-        Err _ ->
-          result
-
-        Ok n ->
-          if n == offset then Err n else result
+      Ok n ->
+        -- The second conditions raises the error as well if we parse just a dot ".", which String.toFloat cannot parse.
+        if n == offset || (dotOffset == offset && result == dotOffset + 1) then Err n else result
 
 
 badFloatMsg : String
